@@ -3,15 +3,14 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold tracking-wide transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-pitch",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold tracking-wide transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper focus-visible:ring-offset-2 focus-visible:ring-offset-pitch",
   {
     variants: {
       variant: {
-        primary: "bg-gold text-ink hover:bg-gold-light",
-        secondary:
-          "border border-line bg-panel text-fog hover:border-gold/50 hover:text-paper",
+        primary: "bg-paper text-ink hover:bg-white",
+        secondary: "border border-line bg-panel text-fog hover:border-paper hover:text-paper",
         ghost: "text-mist hover:text-paper hover:bg-white/5",
-        danger: "bg-red-900/80 text-paper hover:bg-red-800",
+        danger: "bg-neutral-800 text-paper hover:bg-neutral-700",
       },
       size: {
         md: "h-11 px-4",

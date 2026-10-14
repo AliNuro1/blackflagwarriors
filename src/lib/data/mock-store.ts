@@ -30,6 +30,7 @@ function createMemory(): Memory {
   const payments: Payment[] = [];
   const training = charges.find((charge) => charge.id.endsWith("204"));
   const kit = charges.find((charge) => charge.id.endsWith("205"));
+  const league = charges.find((charge) => charge.id.endsWith("203"));
   const adminMatch = charges.find((charge) => charge.id.endsWith("208"));
 
   function paid(
@@ -76,6 +77,26 @@ function createMemory(): Memory {
         "2026-08-12T11:04:00.000Z",
       ),
     );
+  }
+  if (league) {
+    payments.push({
+      id: "33333333-3333-4333-8333-333333333304",
+      playerId: league.playerId,
+      amountPence: 1500,
+      currency: "gbp",
+      stripeCheckoutSessionId: "cs_test_league_partial",
+      stripePaymentIntentId: "pi_test_league_partial",
+      status: "succeeded",
+      createdAt: "2026-09-15T12:00:00.000Z",
+      updatedAt: "2026-09-15T12:00:00.000Z",
+      allocations: [
+        {
+          chargeId: league.id,
+          amountPence: 1500,
+          description: league.description,
+        },
+      ],
+    });
   }
   if (adminMatch) {
     payments.push(

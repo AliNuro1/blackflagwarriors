@@ -14,7 +14,7 @@ const display = Oswald({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#0d1a12",
+  themeColor: "#111111",
 };
 
 export const metadata: Metadata = {

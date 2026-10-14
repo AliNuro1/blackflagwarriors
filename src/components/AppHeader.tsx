@@ -17,14 +17,11 @@ export function AppHeader({ session }: { session: SessionPayload }) {
           </span>
         </Link>
         <nav className="flex items-center gap-2 text-sm">
-          <Link className="hidden px-3 py-2 text-fog hover:text-paper sm:inline" href="/account">
+          <Link className="px-2 py-2 text-fog hover:text-paper sm:px-3" href="/account">
             My fees
           </Link>
-          <Link className="hidden px-3 py-2 text-fog hover:text-paper sm:inline" href="/account/history">
-            History
-          </Link>
           {session.role === "admin" ? (
-            <Link className="px-3 py-2 text-gold hover:text-gold-light" href="/admin">
+            <Link className="px-3 py-2 text-paper hover:text-fog" href="/admin">
               Admin
             </Link>
           ) : null}
