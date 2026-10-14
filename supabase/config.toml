@@ -1,0 +1,2 @@
+# Minimal config so `supabase db push` / `supabase db reset` pick up this folder.
+project_id = "black-flag-warriors"

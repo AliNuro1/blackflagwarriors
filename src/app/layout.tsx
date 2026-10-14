@@ -1,61 +1,31 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Oswald } from "next/font/google";
+import { ModeBanner } from "@/components/ModeBanner";
 import "./globals.css";
 
-// Initialize the Geist font with Latin subset
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const body = DM_Sans({
   subsets: ["latin"],
+  variable: "--font-body",
 });
 
-// Initialize the Geist Mono font with Latin subset
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Oswald({
   subsets: ["latin"],
+  variable: "--font-display",
 });
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#111827" },
-  ],
+  themeColor: "#0d1a12",
 };
 
-// Define metadata for better SEO
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "Next.js Beginner Template",
-  description: "A beginner-friendly Next.js template with TailwindCSS and TypeScript",
-  keywords: ["Next.js", "React", "TailwindCSS", "TypeScript", "Template"],
-  authors: [{ name: "Created with Cursor Agent" }],
-  creator: "Cursor Agent",
-  publisher: "Cursor Agent",
-  openGraph: {
-    title: "Next.js Beginner Template",
-    description: "A beginner-friendly Next.js template with TailwindCSS and TypeScript",
-    url: "https://nextjs.org/",
-    siteName: "Next.js Beginner Template",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Next.js Beginner Template",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:38471"),
+  title: {
+    default: "Black Flag Warriors · Player payments",
+    template: "%s · Black Flag Warriors",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Next.js Beginner Template",
-    description: "A beginner-friendly Next.js template with TailwindCSS and TypeScript",
-    images: ["/og-image.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  description:
+    "Private player payments portal for Black Flag Warriors, Sunday football in Manchester.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -64,16 +34,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100`}
-      >
+    <html lang="en-GB">
+      <body className={`${body.variable} ${display.variable} bg-pitch text-paper antialiased`}>
         <a
           href="#main-content"
-          className="absolute -top-12 left-4 z-50 px-4 py-2 bg-indigo-600 text-white rounded-md transition-[top] duration-200 focus:top-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="absolute -top-12 left-4 z-50 rounded-md bg-gold px-4 py-2 text-ink focus:top-4"
         >
           Skip to main content
         </a>
+        <ModeBanner />
         {children}
       </body>
     </html>

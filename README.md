@@ -1,172 +1,86 @@
-# Mikhail Builds Website Template for Beginners
+# Black Flag Warriors — player payments
 
-A modern, beginner-friendly Next.js template designed for rapid web development with Cursor IDE integration.
+Private portal for an amateur Sunday team in Manchester. Players sign in with a UK mobile one-time code, see fees in pence, and pay by card. Admins post charges. The database enforces who can read or change records.
 
-## Tech Stack
+## Stack
 
-- **Framework**: Next.js 16 with App Router
-- **Language**: TypeScript for type safety
-- **UI Library**: React 19
-- **Styling**: Tailwind CSS v4 with custom animations
-- **Development**: Turbopack for fast builds
-- **Linting**: ESLint with Next.js configuration
-- **Build Tool**: PostCSS with Autoprefixer
+- Next.js App Router, TypeScript (strict)
+- Supabase PostgreSQL with Row Level Security
+- Twilio Verify (SMS OTP)
+- Stripe Checkout
+- Tailwind CSS
 
-## Features
+Without live keys the app runs against an in-memory fictional squad (Ofcom drama-range numbers only).
 
-- **Modern UI Components**: Pre-built Hero component with animated gradient backgrounds
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **TypeScript Support**: Full type checking and IntelliSense
-- **Custom Animations**: Blob animations and smooth transitions
-- **Developer Experience**: Optimized with Turbopack for lightning-fast development
-- **Cursor IDE Integration**: Designed to work seamlessly with Cursor's AI agent
-- **Authentication Ready**: Clerk integration guide included
-- **Backend Ready**: Convex database integration guide included
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [Bun](https://bun.sh/) (recommended package manager for this template)
-- [Cursor IDE](https://cursor.sh/) (recommended)
-
-### Installation
-
-1. **Download Cursor IDE**
-   - Visit [cursor.sh](https://cursor.sh/) and download the latest version
-
-2. **Clone the repository**
-   ```bash
-   git clone https://github.com/mwijanarko1/template.git
-   cd template
-   ```
-
-3. **Install dependencies**
-   ```bash
-   bun install
-   ```
-
-4. **Start the development server**
-   ```bash
-   bun run dev
-   ```
-
-5. **Open Cursor Composer**
-   - Press `CMD + I` to open the Composer
-   - Make sure to select the "Agent" mode
-
-6. **Use the AI Agent**
-   - Copy the contents of the `docs/PROMPT.txt` file and paste it into the Composer Agent
-   - Let the AI generate your project structure and components
-   - Chat with the agent to build features - it will handle the coding for you
-
-7. **Fix any issues**
-   - If errors occur, copy/paste the error or screenshot it
-   - Ask the agent to fix the specific error
-
-## Project Structure
-
-```
-template/
-├── docs/                       # Documentation and guides
-│   ├── PROMPT.txt             # AI agent prompt instructions
-│   ├── CURSOR_GUIDE.md        # Comprehensive Cursor IDE guide
-│   ├── clerk/                 # Clerk authentication guides
-│   │   └── clerk-auth-guide.md
-│   └── convex/                # Convex database guides
-│       ├── convex-db-guide.md
-│       └── convex_rules.mdc
-├── for-agent/                 # Agent-specific instructions
-│   ├── deployment.txt         # Deployment guidelines
-│   ├── guidelines.txt         # General coding guidelines
-│   ├── modes.txt              # Agent modes and instructions
-│   └── ui-guide.txt           # UI/UX guidelines
-├── src/                       # Source code
-│   ├── app/
-│   │   ├── layout.tsx         # Root layout component
-│   │   ├── page.tsx           # Home page
-│   │   ├── globals.css        # Global styles
-│   │   └── favicon.ico        # App favicon
-│   └── components/
-│       └── Hero.tsx           # Hero section component
-├── tailwind.config.js         # Tailwind CSS configuration
-├── next.config.mjs            # Next.js configuration
-├── postcss.config.mjs         # PostCSS configuration
-├── eslint.config.mjs          # ESLint configuration
-└── package.json               # Dependencies and scripts
-```
-
-## Documentation
-
-### Codebase Architecture
-For a comprehensive overview of the codebase structure, architecture diagrams, data flows, and navigation guide, see [`docs/CODEBASE_MAP.md`](docs/CODEBASE_MAP.md).
-
-### Cursor IDE Guide
-Check `docs/CURSOR_GUIDE.md` for detailed instructions on using Cursor IDE effectively with this template.
-
-### Authentication (Clerk)
-The `docs/clerk/` directory contains guides for integrating Clerk authentication into your project.
-
-### Backend/Database (Convex)
-The `docs/convex/` directory contains guides for setting up Convex as your backend and database solution.
-
-### Agent Instructions
-The `for-agent/` directory contains instructions that help the AI agent understand how to work with your project:
-- **deployment.txt**: Deployment best practices
-- **guidelines.txt**: General coding standards
-- **modes.txt**: Different agent modes and when to use them
-- **ui-guide.txt**: UI/UX design guidelines
-
-## Testing
-
-Run the test suite:
+## Run locally
 
 ```bash
-bun run test        # Watch mode
-bun run test:run    # Single run
+bun install
+cp .env.example .env.local
+bun run dev -- --hostname 0.0.0.0 --port 38471
 ```
 
-Tests use Vitest and React Testing Library. Add `*.test.tsx` files next to your components.
+Preview logins when Twilio is unset: player `07700 900 101`, admin `07700 900 110`, code `000000`.
 
-## Environment
+## Database
 
-Copy `.env.example` to `.env.local` and fill in values. Use `getEnv()` from `src/lib/env.ts` for validated access. Extend the Zod schema when adding Clerk, Convex, or other services.
+Schema lives in `supabase/migrations/`. Seed data is fictional and is in `supabase/seed.sql`.
 
-## Customization
+### Apply migrations to a development Supabase project
 
-### Styling
-- Modify `tailwind.config.js` to add custom colors, fonts, or animations
-- Update `src/app/globals.css` for global styles
-- Components use Tailwind utility classes for easy customization
+1. Create a project at [supabase.com](https://supabase.com) (or run the CLI locally).
+2. Install the CLI: `npm install -g supabase` (or use `npx supabase`).
+3. From this repo:
 
-### Components
-- Add new components in `src/components/`
-- Import and use them in your pages
-- Follow the existing Hero component pattern
-
-## Deployment
-
-### Build for Production
 ```bash
-bun run build
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
 ```
 
-### Start Production Server
+`db push` applies every file in `supabase/migrations/` in timestamp order.
+
+4. Load development data (optional, fictional only):
+
 ```bash
-bun run start
+supabase db query --linked -f supabase/seed.sql
 ```
 
-The template is ready to deploy to Vercel, Netlify, or any other hosting platform that supports Next.js.
+If you prefer the dashboard: open **SQL Editor**, paste `supabase/migrations/20261014180000_club_payments.sql`, run it, then paste and run `supabase/seed.sql`.
 
-## Contributing
+5. Put **server-only** values in `.env.local`:
 
-This template is designed to be extended and customized. Feel free to:
-- Add new components
-- Modify the styling
-- Extend functionality
-- Share your improvements
+```
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
-## License
+Never add `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`. The service role bypasses RLS and must stay on the server. This app talks to Supabase only from Route Handlers and server components.
 
-This project is open source and available under the [MIT License](LICENSE).
+Local Postgres without Supabase: apply `supabase/tests/bootstrap.sql` first (creates `anon` / `authenticated` / `service_role` and `auth.uid()` stubs), then the migration, then the seed. Do **not** run the bootstrap file on hosted Supabase.
+
+### What the schema enforces
+
+| Table | Purpose |
+| --- | --- |
+| `profiles` | User ID, name, registered E.164 phone, role (`player` / `admin`), timestamps |
+| `charges` | Player, description, category, amount in pence, due date, status |
+| `payments` | Player, amount in pence, `gbp`, Stripe Checkout Session ID, Payment Intent ID, status |
+| `payment_allocations` | Links a payment to the charges it settles (partials and multi-charge checkouts) |
+| `stripe_webhook_events` | Unique Stripe event ID so webhooks are processed once |
+
+Roles are stored on `profiles.role`. Players cannot update that column: there is no UPDATE policy for non-admins. Fee amounts and payment status are not writable by players.
+
+RLS is **enabled and forced** on every application table. Players may `SELECT` only their own profile, charges, payments, and allocations. `anon` has no table grants. Webhook events have no client policies. Charges are inserted through `create_charges_for_players`; checkouts and settlement go through `begin_checkout`, `complete_payment`, and `ingest_stripe_event` so multiple rows change in one transaction.
+
+## Tests
+
+```bash
+bun run test:run
+```
+
+That includes phone helpers, the in-memory store, and Postgres RLS checks (PGlite). Policy tests live in `src/test/rls-policies.test.ts`.
+
+## Stripe webhook
+
+Point Stripe at `/api/webhooks/stripe`. The handler verifies the signature, inserts `stripe_event_id` (duplicate events are ignored), then reconciles the Checkout Session inside the same database function.
