@@ -42,6 +42,7 @@ export interface PlayerDashboard {
   charges: DashboardCharge[];
   payments: DashboardPayment[];
   developmentSeed: boolean;
+  stripeReady: boolean;
 }
 
 export function chargeDisplayStatus(charge: Charge): ChargeDisplayStatus {
@@ -99,6 +100,7 @@ export async function loadPlayerDashboard(input: {
   store: ClubStore;
   requestedPlayerId?: string;
   developmentSeed?: boolean;
+  stripeReady?: boolean;
   now?: Date;
 }): Promise<PlayerDashboard> {
   if (!input.session) {
@@ -139,5 +141,6 @@ export async function loadPlayerDashboard(input: {
     charges,
     payments: rawPayments.map(mapPayment),
     developmentSeed: input.developmentSeed ?? true,
+    stripeReady: input.stripeReady ?? false,
   };
 }

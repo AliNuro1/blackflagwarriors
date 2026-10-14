@@ -83,6 +83,10 @@ bun run test:run
 
 That includes phone helpers, the in-memory store, and Postgres RLS checks (PGlite). Policy tests live in `src/test/rls-policies.test.ts`.
 
-## Stripe webhook
+## Stripe Checkout
 
-Point Stripe at `/api/webhooks/stripe`. The handler verifies the signature, inserts `stripe_event_id` (duplicate events are ignored), then reconciles the Checkout Session inside the same database function.
+See [`docs/stripe.md`](docs/stripe.md) for Dashboard keys, webhook secret, and test-mode setup.
+
+`POST /api/pay` starts Checkout from **server-side** outstanding pence (GBP, integer pence). The return URLs `/pay/success` and `/pay/cancel` never mark a payment paid. `POST /api/webhooks/stripe` verifies the Stripe signature on the **raw body**, records each `stripe_event_id` once, and confirms payment only after a trusted paid Checkout event whose amount and player match club records.
+
+Do not tell players that card payments are live until test (then live) credentials and webhook delivery have been configured and checked.

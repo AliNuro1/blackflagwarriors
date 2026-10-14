@@ -7,9 +7,11 @@ import { formatGbp } from "@/lib/money";
 export function PayOutstandingForm({
   outstandingPence,
   itemCount,
+  stripeReady,
 }: {
   outstandingPence: number;
   itemCount: number;
+  stripeReady: boolean;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,12 +24,20 @@ export function PayOutstandingForm({
     setPending(true);
     try {
       const response = await fetch("/api/pay", { method: "POST" });
-      const body = (await response.json()) as { error?: string; message?: string };
+      const body = (await response.json()) as {
+        error?: string;
+        message?: string;
+        url?: string;
+      };
       if (!response.ok) {
         setError(body.error ?? "Could not start payment.");
         return;
       }
-      setMessage(body.message ?? "Payment is not available in this build.");
+      if (body.url) {
+        window.location.assign(body.url);
+        return;
+      }
+      setMessage(body.message ?? "Checkout did not return a Stripe URL.");
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -46,10 +56,13 @@ export function PayOutstandingForm({
       </h2>
       <p className="mt-1 text-sm text-fog">
         {itemCount} item{itemCount === 1 ? "" : "s"} · {formatGbp(outstandingPence)} from club
-        records. The amount is calculated on the server in pence; this form does not send a total.
+        records. The amount is calculated on the server in pence; this form does not send a total,
+        player ID, or charge list.
       </p>
       <p className="mt-2 text-xs text-mist">
-        Card checkout is not enabled in this build (Stripe is not implemented here).
+        {stripeReady
+          ? "Stripe Checkout opens in test mode until live keys and a verified webhook are in place. We never collect card numbers here."
+          : "Stripe test keys are not configured on the server, so card checkout cannot start."}
       </p>
       {error ? (
         <p className="mt-3 rounded-md border border-paper/30 bg-panel px-3 py-2 text-sm text-paper" role="alert">
@@ -62,7 +75,7 @@ export function PayOutstandingForm({
         </p>
       ) : null}
       <Button type="submit" className="mt-4 w-full sm:w-auto" disabled={pending || outstandingPence <= 0}>
-        {pending ? "Checking club records…" : `Pay ${formatGbp(outstandingPence)}`}
+        {pending ? "Starting Stripe Checkout…" : `Pay ${formatGbp(outstandingPence)}`}
       </Button>
     </form>
   );

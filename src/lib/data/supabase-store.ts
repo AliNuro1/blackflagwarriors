@@ -63,7 +63,7 @@ function mapPlayer(row: ProfileRow): Player {
   };
 }
 
-function mapCharge(row: ChargeRow, remainingPence: number): Charge {
+function mapCharge(row: ChargeRow, remainingPence: number, payablePence = remainingPence): Charge {
   return {
     id: row.id,
     playerId: row.player_id,
@@ -71,6 +71,7 @@ function mapCharge(row: ChargeRow, remainingPence: number): Charge {
     category: row.category,
     amountPence: row.amount_pence,
     remainingPence,
+    payablePence,
     dueOn: row.due_on,
     status: row.status,
     createdAt: row.created_at,
@@ -91,8 +92,10 @@ function requireRow<T>(data: T | null, error: { message: string } | null): T {
 export class SupabaseClubStore implements ClubStore {
   constructor(private readonly client: SupabaseClient) {}
 
-  private async remainingByCharge(chargeIds: string[]): Promise<Map<string, number>> {
-    const remaining = new Map<string, number>();
+  private async remainingByCharge(
+    chargeIds: string[],
+  ): Promise<Map<string, { remaining: number; payable: number }>> {
+    const remaining = new Map<string, { remaining: number; payable: number }>();
     if (chargeIds.length === 0) return remaining;
     const { data: charges, error: chargeError } = await this.client
       .from("charges")
@@ -107,7 +110,8 @@ export class SupabaseClubStore implements ClubStore {
       .select("charge_id, amount_pence, payments!inner(status)")
       .in("charge_id", chargeIds);
     if (error) throw new Error(error.message);
-    const settled = new Map<string, number>();
+    const succeeded = new Map<string, number>();
+    const reserved = new Map<string, number>();
     for (const row of allocations ?? []) {
       const record = row as {
         charge_id: string;
@@ -117,11 +121,18 @@ export class SupabaseClubStore implements ClubStore {
       const status = Array.isArray(record.payments)
         ? record.payments[0]?.status
         : record.payments.status;
-      if (status !== "succeeded") continue;
-      settled.set(record.charge_id, (settled.get(record.charge_id) ?? 0) + record.amount_pence);
+      if (status === "succeeded") {
+        succeeded.set(record.charge_id, (succeeded.get(record.charge_id) ?? 0) + record.amount_pence);
+        reserved.set(record.charge_id, (reserved.get(record.charge_id) ?? 0) + record.amount_pence);
+      } else if (status === "pending") {
+        reserved.set(record.charge_id, (reserved.get(record.charge_id) ?? 0) + record.amount_pence);
+      }
     }
     for (const charge of chargeRows) {
-      remaining.set(charge.id, Math.max(charge.amount_pence - (settled.get(charge.id) ?? 0), 0));
+      remaining.set(charge.id, {
+        remaining: Math.max(charge.amount_pence - (succeeded.get(charge.id) ?? 0), 0),
+        payable: Math.max(charge.amount_pence - (reserved.get(charge.id) ?? 0), 0),
+      });
     }
     return remaining;
   }
@@ -155,7 +166,14 @@ export class SupabaseClubStore implements ClubStore {
       .order("due_on");
     const rows = requireRows(data as ChargeRow[] | null, error);
     const remaining = await this.remainingByCharge(rows.map((row) => row.id));
-    return rows.map((row) => mapCharge(row, remaining.get(row.id) ?? row.amount_pence));
+    return rows.map((row) => {
+      const balances = remaining.get(row.id);
+      return mapCharge(
+        row,
+        balances?.remaining ?? row.amount_pence,
+        balances?.payable ?? row.amount_pence,
+      );
+    });
   }
 
   async listOpenChargesByIds(playerId: string, chargeIds: string[]): Promise<Charge[]> {
@@ -165,7 +183,7 @@ export class SupabaseClubStore implements ClubStore {
       (charge) =>
         wanted.has(charge.id) &&
         (charge.status === "open" || charge.status === "partial") &&
-        charge.remainingPence > 0,
+        charge.payablePence > 0,
     );
   }
 
@@ -239,7 +257,10 @@ export class SupabaseClubStore implements ClubStore {
       const theirs = open.filter((row) => row.player_id === player.id);
       return {
         player,
-        openPence: theirs.reduce((sum, row) => sum + (remaining.get(row.id) ?? row.amount_pence), 0),
+        openPence: theirs.reduce(
+          (sum, row) => sum + (remaining.get(row.id)?.remaining ?? row.amount_pence),
+          0,
+        ),
         overdueCount: theirs.filter((row) => row.due_on < today).length,
       };
     });
@@ -314,13 +335,45 @@ export class SupabaseClubStore implements ClubStore {
     return listed.find((payment) => payment.id === row.id) ?? null;
   }
 
+  async abandonPayment(input: {
+    paymentId?: string;
+    stripeCheckoutSessionId?: string;
+    status: Extract<PaymentStatus, "failed" | "cancelled" | "expired">;
+  }): Promise<Payment | null> {
+    const { data, error } = await this.client.rpc("abandon_payment", {
+      p_payment_id: input.paymentId ?? null,
+      p_stripe_checkout_session_id: input.stripeCheckoutSessionId ?? null,
+      p_status: input.status,
+    });
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const row = data as PaymentRow;
+    const listed = await this.listPaymentsForPlayer(row.player_id);
+    return listed.find((payment) => payment.id === row.id) ?? null;
+  }
+
+  async getPaymentByStripeSession(sessionId: string): Promise<Payment | null> {
+    const { data, error } = await this.client
+      .from("payments")
+      .select("*")
+      .eq("stripe_checkout_session_id", sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const row = data as PaymentRow;
+    const listed = await this.listPaymentsForPlayer(row.player_id);
+    return listed.find((payment) => payment.id === row.id) ?? null;
+  }
+
   async ingestStripeEvent(input: {
     stripeEventId: string;
     eventType: string;
     payload: unknown;
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
+    apply?: boolean;
   }): Promise<boolean> {
+    void input.apply;
     const { data, error } = await this.client.rpc("ingest_stripe_event", {
       p_stripe_event_id: input.stripeEventId,
       p_event_type: input.eventType,

@@ -17,8 +17,8 @@ export function PlayerDashboard({ data }: { data: DashboardData }) {
           className="mb-6 rounded-md border border-line bg-panel px-3 py-2 text-xs text-mist"
           role="status"
         >
-          Development seed data — fictional squad figures, not live club accounts. Card payments
-          (Stripe) are not connected in this build.
+          Development seed data — fictional squad figures, not live club accounts. Stripe Checkout
+          is test mode until live credentials and a verified webhook are in place.
         </p>
       ) : null}
 
@@ -92,6 +92,7 @@ export function PlayerDashboard({ data }: { data: DashboardData }) {
         <PayOutstandingForm
           outstandingPence={data.outstandingPence}
           itemCount={payable.length}
+          stripeReady={data.stripeReady}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { seedCharges, seedPlayers } from "./seed";
-import type { Charge, ClubStore, Payment, Player, PlayerBalance } from "./types";
+import type { Charge, ClubStore, Payment, PaymentStatus, Player, PlayerBalance } from "./types";
 
 interface Memory {
   players: Player[];
@@ -13,16 +13,34 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function allocatedToCharge(chargeId: string, payments: Payment[], statuses: PaymentStatus[]): number {
+  return payments
+    .filter((payment) => statuses.includes(payment.status))
+    .flatMap((payment) => payment.allocations)
+    .filter((allocation) => allocation.chargeId === chargeId)
+    .reduce((sum, allocation) => sum + allocation.amountPence, 0);
+}
+
 function refreshCharge(charge: Charge, payments: Payment[]): Charge {
   if (charge.status === "void") return charge;
-  const settled = payments
-    .filter((payment) => payment.status === "succeeded")
-    .flatMap((payment) => payment.allocations)
-    .filter((allocation) => allocation.chargeId === charge.id)
-    .reduce((sum, allocation) => sum + allocation.amountPence, 0);
+  const settled = allocatedToCharge(charge.id, payments, ["succeeded"]);
+  const reserved = allocatedToCharge(charge.id, payments, ["pending", "succeeded"]);
   const remaining = Math.max(charge.amountPence - settled, 0);
+  const payable = Math.max(charge.amountPence - reserved, 0);
   const status = settled <= 0 ? "open" : settled < charge.amountPence ? "partial" : "paid";
-  return { ...charge, remainingPence: remaining, status };
+  return { ...charge, remainingPence: remaining, payablePence: payable, status };
+}
+
+function findPayment(
+  payments: Payment[],
+  input: { paymentId?: string; stripeCheckoutSessionId?: string },
+): Payment | undefined {
+  return payments.find((row) => {
+    if (input.paymentId && row.id === input.paymentId) return true;
+    return Boolean(
+      input.stripeCheckoutSessionId && row.stripeCheckoutSessionId === input.stripeCheckoutSessionId,
+    );
+  });
 }
 
 function createMemory(): Memory {
@@ -167,7 +185,7 @@ export class MockClubStore implements ClubStore {
       (charge) =>
         charge.playerId === playerId &&
         (charge.status === "open" || charge.status === "partial") &&
-        charge.remainingPence > 0 &&
+        charge.payablePence > 0 &&
         wanted.has(charge.id),
     );
   }
@@ -212,6 +230,7 @@ export class MockClubStore implements ClubStore {
         description: input.description,
         amountPence: input.amountPence,
         remainingPence: input.amountPence,
+        payablePence: input.amountPence,
         dueOn: input.dueOn,
         status: "open",
         createdAt: new Date().toISOString(),
@@ -228,13 +247,32 @@ export class MockClubStore implements ClubStore {
     amountPence: number;
     stripeCheckoutSessionId: string | null;
   }): Promise<Payment> {
+    if (input.chargeIds.some((id) => !memory().charges.some((c) => c.id === id && c.playerId === input.playerId))) {
+      throw new Error("Charge is not payable by this player");
+    }
     const charges = await this.listOpenChargesByIds(input.playerId, input.chargeIds);
+    if (charges.length !== input.chargeIds.length) {
+      throw new Error("Charge is not open or has no remaining balance");
+    }
     const allocations = charges.map((charge) => ({
       chargeId: charge.id,
-      amountPence: charge.remainingPence,
+      amountPence: charge.payablePence,
       description: charge.description,
     }));
     const amountPence = allocations.reduce((sum, row) => sum + row.amountPence, 0);
+    if (amountPence !== input.amountPence) {
+      throw new Error("Payment amount does not match remaining club records");
+    }
+    if (
+      memory().payments.some(
+        (row) =>
+          row.status === "pending" &&
+          row.playerId === input.playerId &&
+          row.stripeCheckoutSessionId,
+      )
+    ) {
+      throw new Error("A checkout is already pending for this player");
+    }
     const now = new Date().toISOString();
     const payment: Payment = {
       id: randomUUID(),
@@ -249,6 +287,7 @@ export class MockClubStore implements ClubStore {
       allocations,
     };
     memory().payments.push(payment);
+    memory().charges = memory().charges.map((charge) => refreshCharge(charge, memory().payments));
     return mapPayment(payment);
   }
 
@@ -257,14 +296,15 @@ export class MockClubStore implements ClubStore {
     stripeCheckoutSessionId?: string;
     stripePaymentIntentId?: string;
   }): Promise<Payment | null> {
-    const payment = memory().payments.find((row) => {
-      if (input.paymentId && row.id === input.paymentId) return true;
-      return Boolean(
-        input.stripeCheckoutSessionId &&
-          row.stripeCheckoutSessionId === input.stripeCheckoutSessionId,
-      );
-    });
+    const payment = findPayment(memory().payments, input);
     if (!payment) return null;
+    if (payment.status === "succeeded") {
+      if (input.stripePaymentIntentId && !payment.stripePaymentIntentId) {
+        payment.stripePaymentIntentId = input.stripePaymentIntentId;
+      }
+      return mapPayment(payment);
+    }
+    if (payment.status !== "pending") return mapPayment(payment);
     payment.status = "succeeded";
     payment.updatedAt = new Date().toISOString();
     if (input.stripePaymentIntentId) {
@@ -274,16 +314,42 @@ export class MockClubStore implements ClubStore {
     return mapPayment(payment);
   }
 
+  async abandonPayment(input: {
+    paymentId?: string;
+    stripeCheckoutSessionId?: string;
+    status: Extract<PaymentStatus, "failed" | "cancelled" | "expired">;
+  }): Promise<Payment | null> {
+    const payment = findPayment(memory().payments, input);
+    if (!payment) return null;
+    if (payment.status === "succeeded") {
+      throw new Error("Cannot abandon a confirmed payment");
+    }
+    if (payment.status !== "pending") return mapPayment(payment);
+    payment.status = input.status;
+    payment.updatedAt = new Date().toISOString();
+    memory().charges = memory().charges.map((charge) => refreshCharge(charge, memory().payments));
+    return mapPayment(payment);
+  }
+
+  async getPaymentByStripeSession(sessionId: string): Promise<Payment | null> {
+    const payment = memory().payments.find((row) => row.stripeCheckoutSessionId === sessionId);
+    return payment ? mapPayment(payment) : null;
+  }
+
   async ingestStripeEvent(input: {
     stripeEventId: string;
     eventType: string;
     payload: unknown;
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
+    apply?: boolean;
   }): Promise<boolean> {
+    void input.payload;
+    void input.stripeCheckoutSessionId;
+    void input.eventType;
     if (memory().stripeEvents.has(input.stripeEventId)) return false;
     memory().stripeEvents.add(input.stripeEventId);
-    if (input.eventType === "checkout.session.completed" && input.stripeCheckoutSessionId) {
+    if (input.apply && input.stripeCheckoutSessionId) {
       await this.completePayment({
         stripeCheckoutSessionId: input.stripeCheckoutSessionId,
         stripePaymentIntentId: input.stripePaymentIntentId ?? undefined,

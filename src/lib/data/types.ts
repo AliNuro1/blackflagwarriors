@@ -8,7 +8,13 @@ export type ChargeCategory =
   | "fine"
   | "social";
 export type ChargeStatus = "open" | "partial" | "paid" | "void";
-export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded";
+export type PaymentStatus =
+  | "pending"
+  | "succeeded"
+  | "failed"
+  | "refunded"
+  | "cancelled"
+  | "expired";
 
 export interface Player {
   id: string;
@@ -27,6 +33,7 @@ export interface Charge {
   category: ChargeCategory;
   amountPence: number;
   remainingPence: number;
+  payablePence: number;
   dueOn: string;
   status: ChargeStatus;
   createdAt: string;
@@ -78,12 +85,19 @@ export interface ClubStore {
     stripeCheckoutSessionId?: string;
     stripePaymentIntentId?: string;
   }): Promise<Payment | null>;
+  abandonPayment(input: {
+    paymentId?: string;
+    stripeCheckoutSessionId?: string;
+    status: Extract<PaymentStatus, "failed" | "cancelled" | "expired">;
+  }): Promise<Payment | null>;
+  getPaymentByStripeSession(sessionId: string): Promise<Payment | null>;
   ingestStripeEvent(input: {
     stripeEventId: string;
     eventType: string;
     payload: unknown;
     stripeCheckoutSessionId?: string | null;
     stripePaymentIntentId?: string | null;
+    apply?: boolean;
   }): Promise<boolean>;
 }
 

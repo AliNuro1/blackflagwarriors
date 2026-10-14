@@ -34,5 +34,8 @@ describe("mock club store", () => {
 
     expect(first).toBe(true);
     expect(second).toBe(false);
+
+    const stillPending = await store.getPaymentByStripeSession("cs_test_once");
+    expect(stillPending?.status).toBe("pending");
   });
 });

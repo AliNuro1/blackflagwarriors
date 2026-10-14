@@ -19,6 +19,9 @@ async function openClubDb() {
   const db = new PGlite();
   await db.exec(sqlFile("supabase/tests/bootstrap.sql"));
   await db.exec(sqlFile("supabase/migrations/20261014180000_club_payments.sql"));
+  await db.exec(sqlFile("supabase/migrations/20261014193000_profile_status.sql"));
+  await db.exec(sqlFile("supabase/migrations/20261014200000_stripe_checkout_reconcile.sql"));
+  await db.exec(sqlFile("supabase/migrations/20261014201000_stripe_checkout_functions.sql"));
   await db.exec(sqlFile("supabase/seed.sql"));
   return db;
 }
@@ -250,6 +253,63 @@ describe("club payment access policies", () => {
           [payment.rows[0]!.id, PLAYER_CHARGE],
         ),
       ).rejects.toThrow(/exceed/i);
+    });
+  });
+
+  it("does not mark a payment succeeded when ingesting a Checkout completed event", async () => {
+    await asRole(db, "service_role", null, async () => {
+      const started = await db.query<{ id: string; status: string }>(
+        `select id, status from public.begin_checkout(
+           $1::uuid,
+           array[$2]::uuid[],
+           'cs_test_webhook_only'
+         )`,
+        [PLAYER, PLAYER_CHARGE],
+      );
+      expect(started.rows[0]?.status).toBe("pending");
+      await db.query(
+        `select public.ingest_stripe_event(
+           'evt_completed_no_auto',
+           'checkout.session.completed',
+           '{"id":"evt_completed_no_auto","type":"checkout.session.completed"}'::jsonb,
+           'cs_test_webhook_only',
+           'pi_test_webhook_only'
+         )`,
+      );
+      const row = await db.query<{ status: string }>(
+        "select status from public.payments where id = $1",
+        [started.rows[0]!.id],
+      );
+      expect(row.rows[0]?.status).toBe("pending");
+    });
+  });
+
+  it("abandons an expired checkout and frees remaining balance", async () => {
+    await asRole(db, "service_role", null, async () => {
+      await db.query(
+        `select public.begin_checkout(
+           $1::uuid,
+           array[$2]::uuid[],
+           'cs_test_expired_session'
+         )`,
+        [PLAYER, PLAYER_CHARGE],
+      );
+      const reserved = await db.query<{ allocated_pence: number }>(
+        "select public.allocated_pence($1::uuid) as allocated_pence",
+        [PLAYER_CHARGE],
+      );
+      expect(reserved.rows[0]?.allocated_pence).toBeGreaterThan(0);
+      await db.query(
+        `select public.abandon_payment(
+           p_stripe_checkout_session_id => 'cs_test_expired_session',
+           p_status => 'expired'
+         )`,
+      );
+      const freed = await db.query<{ allocated_pence: number }>(
+        "select public.allocated_pence($1::uuid) as allocated_pence",
+        [PLAYER_CHARGE],
+      );
+      expect(freed.rows[0]?.allocated_pence).toBe(0);
     });
   });
 });

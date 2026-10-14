@@ -1,30 +1,43 @@
-import { loadPlayerDashboard } from "@/lib/dashboard";
 import { getStore } from "@/lib/data";
-import { usesMockData } from "@/lib/env";
+import { stripeConfigured } from "@/lib/env";
 import { jsonError, jsonOk } from "@/lib/http";
-import { formatGbp } from "@/lib/money";
+import { PaymentAccessError, startPlayerCheckout } from "@/lib/payments/checkout";
+import { createStripeGateway } from "@/lib/payments/stripe-gateway";
 import { getSession } from "@/lib/session";
 
-export async function POST() {
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return jsonError("Sign in to pay.", 401);
 
+  if (!stripeConfigured()) {
+    return jsonError(
+      "Stripe test keys are not configured on the server. Card checkout is not available.",
+      503,
+    );
+  }
+
+  const clientBody = await request.json().catch(() => null);
+
   try {
-    const dashboard = await loadPlayerDashboard({
+    const result = await startPlayerCheckout({
       session,
       store: getStore(),
-      developmentSeed: usesMockData(),
+      stripe: createStripeGateway(),
+      clientBody,
     });
-    if (dashboard.outstandingPence <= 0) {
-      return jsonError("There is nothing outstanding on your account.");
-    }
     return jsonOk({
       ok: true,
-      amountPence: dashboard.outstandingPence,
-      development: true,
-      message: `Card payments are not connected. Club records show ${formatGbp(dashboard.outstandingPence)} outstanding. Stripe is not implemented in this build.`,
+      url: result.url,
+      amountPence: result.amountPence,
+      testMode: result.testMode,
     });
-  } catch {
-    return jsonError("Sign in to pay.", 401);
+  } catch (error) {
+    if (error instanceof PaymentAccessError) {
+      return jsonError(error.message, error.status);
+    }
+    console.error("[payments] checkout_failed", { playerId: session.playerId });
+    return jsonError("We could not start card payment. Try again.", 502);
   }
 }

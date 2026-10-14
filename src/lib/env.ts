@@ -35,6 +35,9 @@ export function getEnv(): Env {
   if (process.env.NEXT_PUBLIC_TWILIO_AUTH_TOKEN || process.env.NEXT_PUBLIC_TWILIO_ACCOUNT_SID) {
     throw new Error("Twilio credentials must never be exposed as NEXT_PUBLIC_*.");
   }
+  if (process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY || process.env.NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET) {
+    throw new Error("Stripe secrets must never be exposed as NEXT_PUBLIC_*.");
+  }
 
   const parsed = envSchema.safeParse({
     NODE_ENV: process.env.NODE_ENV,
@@ -107,5 +110,9 @@ export function usesMockAuth(env: Env = getEnv()): boolean {
 }
 
 export function usesMockPayments(env: Env = getEnv()): boolean {
-  return !env.STRIPE_SECRET_KEY;
+  return !env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET;
+}
+
+export function stripeConfigured(env: Env = getEnv()): boolean {
+  return Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET);
 }

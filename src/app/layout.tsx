@@ -38,7 +38,7 @@ export default function RootLayout({
       <body className={`${body.variable} ${display.variable} bg-pitch text-paper antialiased`}>
         <a
           href="#main-content"
-          className="absolute -top-12 left-4 z-50 rounded-md bg-gold px-4 py-2 text-ink focus:top-4"
+          className="absolute -top-12 left-4 z-50 rounded-md bg-paper px-4 py-2 text-ink focus:top-4"
         >
           Skip to main content
         </a>

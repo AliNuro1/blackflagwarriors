@@ -1,7 +1,7 @@
 import { PlayerDashboard } from "@/components/dashboard/PlayerDashboard";
 import { DashboardAccessError, loadPlayerDashboard } from "@/lib/dashboard";
 import { getStore } from "@/lib/data";
-import { usesMockData } from "@/lib/env";
+import { stripeConfigured, usesMockData } from "@/lib/env";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 
@@ -14,6 +14,7 @@ export default async function AccountPage() {
       session,
       store: getStore(),
       developmentSeed: usesMockData(),
+      stripeReady: stripeConfigured(),
     });
     return <PlayerDashboard data={data} />;
   } catch (error) {
