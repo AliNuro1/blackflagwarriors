@@ -3,6 +3,7 @@ import type { Charge, Player } from "./types";
 export const DEMO_OTP = "000000";
 export const DEMO_PLAYER_PHONE = "+447700900101";
 export const DEMO_ADMIN_PHONE = "+447700900110";
+export const DEMO_INACTIVE_PHONE = "+447700900199";
 export const DEMO_TREASURER_PHONE = DEMO_ADMIN_PHONE;
 
 const timestamps = {
@@ -11,18 +12,19 @@ const timestamps = {
 };
 
 export const seedPlayers: Player[] = [
-  { id: "11111111-1111-4111-8111-111111111101", phoneE164: DEMO_PLAYER_PHONE, fullName: "Alex Reed", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111102", phoneE164: "+447700900102", fullName: "Jordan Blake", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111103", phoneE164: "+447700900103", fullName: "Sam Cole", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111104", phoneE164: "+447700900104", fullName: "Riley Shah", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111105", phoneE164: "+447700900105", fullName: "Morgan Ellis", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111106", phoneE164: "+447700900106", fullName: "Chris Nolan", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111107", phoneE164: "+447700900107", fullName: "Pat Murray", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111108", phoneE164: "+447700900108", fullName: "Taylor Quinn", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111109", phoneE164: "+447700900109", fullName: "Jamie Frost", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111110", phoneE164: DEMO_ADMIN_PHONE, fullName: "Priya Khan", role: "admin", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111111", phoneE164: "+447700900111", fullName: "Drew McAllister", role: "player", ...timestamps },
-  { id: "11111111-1111-4111-8111-111111111112", phoneE164: "+447700900112", fullName: "Ben Cartwright", role: "player", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111101", phoneE164: DEMO_PLAYER_PHONE, fullName: "Alex Reed", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111102", phoneE164: "+447700900102", fullName: "Jordan Blake", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111103", phoneE164: "+447700900103", fullName: "Sam Cole", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111104", phoneE164: "+447700900104", fullName: "Riley Shah", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111105", phoneE164: "+447700900105", fullName: "Morgan Ellis", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111106", phoneE164: "+447700900106", fullName: "Chris Nolan", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111107", phoneE164: "+447700900107", fullName: "Pat Murray", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111108", phoneE164: "+447700900108", fullName: "Taylor Quinn", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111109", phoneE164: "+447700900109", fullName: "Jamie Frost", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111110", phoneE164: DEMO_ADMIN_PHONE, fullName: "Priya Khan", role: "admin", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111111", phoneE164: "+447700900111", fullName: "Drew McAllister", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111112", phoneE164: "+447700900112", fullName: "Ben Cartwright", role: "player", status: "active", ...timestamps },
+  { id: "11111111-1111-4111-8111-111111111199", phoneE164: DEMO_INACTIVE_PHONE, fullName: "Robin Shaw", role: "player", status: "inactive", ...timestamps },
 ];
 
 function charge(

@@ -12,8 +12,13 @@ insert into public.profiles (id, full_name, phone_e164, role) values
   ('11111111-1111-4111-8111-111111111109', 'Jamie Frost', '+447700900109', 'player'),
   ('11111111-1111-4111-8111-111111111110', 'Priya Khan', '+447700900110', 'admin'),
   ('11111111-1111-4111-8111-111111111111', 'Drew McAllister', '+447700900111', 'player'),
-  ('11111111-1111-4111-8111-111111111112', 'Ben Cartwright', '+447700900112', 'player')
+  ('11111111-1111-4111-8111-111111111112', 'Ben Cartwright', '+447700900112', 'player'),
+  ('11111111-1111-4111-8111-111111111199', 'Robin Shaw', '+447700900199', 'player')
 on conflict (id) do nothing;
+
+update public.profiles
+  set status = 'inactive'
+  where id = '11111111-1111-4111-8111-111111111199';
 
 insert into public.charges (id, player_id, description, category, amount_pence, due_on, status, created_by) values
   (

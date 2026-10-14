@@ -17,6 +17,7 @@ interface ProfileRow {
   phone_e164: string;
   full_name: string;
   role: UserRole;
+  status: "active" | "inactive";
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ function mapPlayer(row: ProfileRow): Player {
     phoneE164: row.phone_e164,
     fullName: row.full_name,
     role: row.role,
+    status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

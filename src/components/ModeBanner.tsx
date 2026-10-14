@@ -1,16 +1,19 @@
-import { usesMockAuth, usesMockData, usesMockPayments } from "@/lib/env";
+import { isDevMockAuth, usesMockData, usesMockPayments } from "@/lib/env";
 
 export function ModeBanner() {
-  const mocks: string[] = [];
-  if (usesMockData()) mocks.push("squad data");
-  if (usesMockAuth()) mocks.push("SMS codes");
-  if (usesMockPayments()) mocks.push("card payments");
-  if (mocks.length === 0) return null;
+  const notes: string[] = [];
+  if (usesMockData()) notes.push("squad data is in-memory");
+  if (isDevMockAuth()) {
+    notes.push(
+      "DEVELOPMENT-ONLY mock: Twilio Verify is not sending real SMS (code 000000). This path is disabled in production",
+    );
+  }
+  if (usesMockPayments()) notes.push("card payments are mocked");
+  if (notes.length === 0) return null;
 
   return (
     <p className="border-b border-line bg-gold/10 px-4 py-2 text-center text-xs text-gold">
-      Local preview: {mocks.join(", ")} are mocked until Supabase, Twilio Verify, and Stripe
-      keys are set. Demo code is 000000.
+      {notes.join(". ")}.
     </p>
   );
 }

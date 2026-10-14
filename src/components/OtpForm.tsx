@@ -21,12 +21,12 @@ export function OtpForm({ maskedPhone }: { maskedPhone: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json()) as { error?: string; redirectTo?: string };
       if (!response.ok) {
         setError(body.error ?? "That code did not work.");
         return;
       }
-      router.push("/account");
+      router.push(body.redirectTo ?? "/account");
       router.refresh();
     } catch {
       setError("Network error. Try again.");
@@ -38,8 +38,8 @@ export function OtpForm({ maskedPhone }: { maskedPhone: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-fog">
-        We sent a six-digit code to <span className="text-paper">{maskedPhone}</span>. It expires
-        in 10 minutes.
+        If that number is on the squad list, we sent a six-digit code to{" "}
+        <span className="text-paper">{maskedPhone}</span>. It expires in 10 minutes.
       </p>
       <div>
         <Label htmlFor="code">One-time code</Label>

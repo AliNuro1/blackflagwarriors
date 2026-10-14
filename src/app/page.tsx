@@ -19,8 +19,8 @@ export default function LoginPage() {
         </div>
         <h1 className="font-display text-3xl uppercase tracking-wide text-gold">Player payments</h1>
         <p className="mt-3 text-sm leading-6 text-fog">
-          Sign in with the UK mobile number on the squad list. We text a one-time code — no
-          passwords, and only registered players can get in.
+          Enter the UK mobile number on the squad list. If it matches an active player, we text a
+          one-time code. We will not tell you whether the number is registered.
         </p>
         <div className="mt-8">
           <PhoneLoginForm

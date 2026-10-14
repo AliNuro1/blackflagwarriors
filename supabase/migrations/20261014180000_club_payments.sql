@@ -41,6 +41,7 @@ create table if not exists public.profiles (
   phone_e164 text not null unique
     check (phone_e164 ~ '^\+[1-9][0-9]{7,14}$'),
   role public.user_role not null default 'player',
+  status text not null default 'active' check (status in ('active', 'inactive')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

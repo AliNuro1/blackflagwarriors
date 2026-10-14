@@ -1,4 +1,5 @@
 export type UserRole = "player" | "admin";
+export type MembershipStatus = "active" | "inactive";
 export type ChargeCategory =
   | "match_fee"
   | "training"
@@ -14,6 +15,7 @@ export interface Player {
   phoneE164: string;
   fullName: string;
   role: UserRole;
+  status: MembershipStatus;
   createdAt: string;
   updatedAt: string;
 }

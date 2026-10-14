@@ -44,4 +44,5 @@ next-env.d.ts
 # template-specific
 /docs
 !/docs/CODEBASE_MAP.md
+!/docs/twilio-verify.md
 /for-agent

@@ -69,7 +69,9 @@ export function PhoneLoginForm({
       </Button>
       {mockAuth ? (
         <div className="rounded-md border border-line bg-panel px-3 py-3 text-xs leading-5 text-fog">
-          <p className="font-semibold uppercase tracking-wider text-gold">Preview logins</p>
+          <p className="font-semibold uppercase tracking-wider text-gold">
+            Development-only mock sign-in
+          </p>
           <p className="mt-1">
             Player: {displayUkMobile(demoPlayer)} · Admin: {displayUkMobile(demoTreasurer)}
           </p>

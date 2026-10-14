@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PENDING_COOKIE, SESSION_COOKIE, readSessionToken } from "@/lib/auth-token";
+import {
+  PENDING_COOKIE,
+  SESSION_COOKIE,
+  readSessionPlayerIdFromCookie,
+} from "@/lib/auth/session-seal";
 
 function isProtected(pathname: string): boolean {
   return (
@@ -12,27 +16,18 @@ function isProtected(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionToken = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = sessionToken ? await readSessionToken(sessionToken) : null;
+  const playerId = await readSessionPlayerIdFromCookie(
+    request.cookies.get(SESSION_COOKIE)?.value,
+  );
 
-  if (isProtected(pathname) && !session) {
+  if (isProtected(pathname) && !playerId) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  if (
-    (pathname.startsWith("/treasurer") || pathname.startsWith("/admin")) &&
-    session?.role !== "admin"
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/account";
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
-
-  if ((pathname === "/" || pathname === "/verify") && session) {
+  if ((pathname === "/" || pathname === "/verify") && playerId) {
     const url = request.nextUrl.clone();
     url.pathname = "/account";
     url.search = "";

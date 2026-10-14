@@ -62,7 +62,7 @@ describe("club payment access policies", () => {
     const { rows } = await db.query<{ phone_e164: string }>(
       "select phone_e164 from public.profiles order by phone_e164",
     );
-    expect(rows.length).toBe(12);
+    expect(rows.length).toBe(13);
     expect(rows.every((row) => row.phone_e164.startsWith("+447700900"))).toBe(true);
   });
 
@@ -76,7 +76,7 @@ describe("club payment access policies", () => {
   it("lets an admin read every profile", async () => {
     await asRole(db, "authenticated", ADMIN, async () => {
       const { rows } = await db.query("select id from public.profiles");
-      expect(rows.length).toBe(12);
+      expect(rows.length).toBe(13);
     });
   });
 

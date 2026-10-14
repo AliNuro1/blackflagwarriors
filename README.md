@@ -20,7 +20,9 @@ cp .env.example .env.local
 bun run dev -- --hostname 0.0.0.0 --port 38471
 ```
 
-Preview logins when Twilio is unset: player `07700 900 101`, admin `07700 900 110`, code `000000`.
+Sign-in uses **Twilio Verify**. See [`docs/twilio-verify.md`](docs/twilio-verify.md) for env vars and console setup.
+
+Development-only mock (never production): if Twilio is unset locally, the UI is labelled and code `000000` works for the fictional numbers `07700 900 101` (player) and `07700 900 110` (admin).
 
 ## Database
 
