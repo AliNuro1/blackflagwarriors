@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #0a0a0a;
-  --color-pitch: #111111;
-  --color-panel: #1a1a1a;
-  --color-line: #2e2e2e;
-  --color-paper: #f7f7f7;
-  --color-fog: #d4d4d4;
-  --color-mist: #9a9a9a;
-  --color-gold: #f7f7f7;
-  --color-gold-light: #ffffff;
+  --color-ink: #050505;
+  --color-pitch: #000000;
+  --color-panel: #121212;
+  --color-line: #3a3a3a;
+  --color-paper: #eceaea;
+  --color-fog: #c8c6c7;
+  --color-mist: #8e8c8d;
+  --color-gold: #dad7d8;
+  --color-gold-light: #f0f0f0;
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 }
@@ -35,6 +35,6 @@ body {
 }
 
 ::selection {
-  background: #ffffff;
-  color: #0a0a0a;
+  background: #dad7d8;
+  color: #000000;
 }

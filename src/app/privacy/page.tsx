@@ -32,6 +32,10 @@ export default function PrivacyPage() {
         deleted to alter an outstanding balance. You can ask for a copy, a correction, or restriction
         of processing. You may complain to the ICO (ico.org.uk).
       </p>
+      <p className="mt-4">
+        The public fixtures page copies league results from FA Full-Time. That data is published by
+        the league, not stored as player personal data on this portal.
+      </p>
       <Link href="/" className="mt-6 inline-block text-gold hover:underline">
         Back to sign in
       </Link>

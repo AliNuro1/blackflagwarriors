@@ -16,7 +16,7 @@ const display = Oswald({
 export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
-  themeColor: "#111111",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
 };

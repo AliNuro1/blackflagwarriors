@@ -8,7 +8,7 @@ export function AppHeader({ session }: { session: SessionPayload }) {
     <header className="border-b border-line bg-ink/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/account" className="flex items-center gap-3">
-          <BrandMark className="h-9 w-9" />
+          <BrandMark className="h-11 w-11" />
           <span>
             <span className="block font-display text-sm uppercase tracking-[0.18em] text-paper">
               Black Flag Warriors
@@ -17,6 +17,9 @@ export function AppHeader({ session }: { session: SessionPayload }) {
           </span>
         </Link>
         <nav className="flex items-center gap-2 text-sm">
+          <Link className="px-2 py-2 text-fog hover:text-paper sm:px-3" href="/team">
+            Team
+          </Link>
           <Link className="px-2 py-2 text-fog hover:text-paper sm:px-3" href="/account">
             My fees
           </Link>
