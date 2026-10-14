@@ -3,6 +3,7 @@ import { clientIp } from "@/lib/auth/client-ip";
 import { startSignIn } from "@/lib/auth/sign-in";
 import { createTwilioVerifyClient } from "@/lib/auth/twilio-verify";
 import { getStore } from "@/lib/data";
+import { getEnv, twilioConfigured } from "@/lib/env";
 import { jsonError, jsonOk } from "@/lib/http";
 import { setPendingCookie } from "@/lib/session";
 
@@ -14,6 +15,9 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return jsonError("Enter a UK mobile number, for example 07700 900101.");
+  }
+  if (getEnv().NODE_ENV === "production" && !twilioConfigured()) {
+    return jsonError("Sign-in SMS is not configured on this server.", 503);
   }
 
   const result = await startSignIn({

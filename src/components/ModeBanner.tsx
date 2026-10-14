@@ -1,15 +1,19 @@
-import { isDevMockAuth, usesMockData, usesMockPayments } from "@/lib/env";
+import { getEnv, isDevMockAuth, twilioConfigured, usesMockData, usesMockPayments } from "@/lib/env";
 import { stripeMode } from "@/lib/payments/stripe-gateway";
 
 export function ModeBanner() {
+  const env = getEnv();
   const notes: string[] = [];
-  if (usesMockData()) notes.push("squad data is in-memory");
-  if (isDevMockAuth()) {
+  if (usesMockData(env)) notes.push("squad data is in-memory");
+  if (env.NODE_ENV === "production" && !twilioConfigured(env)) {
+    notes.push("Twilio Verify is not configured — player sign-in cannot send SMS");
+  }
+  if (isDevMockAuth(env)) {
     notes.push(
       "DEVELOPMENT-ONLY mock: Twilio Verify is not sending real SMS (code 000000). This path is disabled in production",
     );
   }
-  if (usesMockPayments()) {
+  if (usesMockPayments(env)) {
     notes.push("Stripe Checkout is not configured (test keys missing)");
   } else if (stripeMode() === "test") {
     notes.push("Stripe test mode — not live club card payments");

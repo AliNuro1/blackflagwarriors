@@ -58,17 +58,18 @@ describe("production environment", () => {
     expect(() => getEnv()).toThrow(/AUTH_DEV_MOCK/);
   });
 
-  it("refuses production without Supabase", () => {
-    setProductionBase();
+  it("boots public pages in production without Twilio, Supabase, or Stripe", () => {
+    process.env.NODE_ENV = "production";
+    process.env.AUTH_DEV_MOCK = "";
+    delete process.env.SESSION_SECRET;
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    expect(() => getEnv()).toThrow(/Supabase is required in production/);
-  });
-
-  it("refuses production without Stripe webhook configuration", () => {
-    setProductionBase();
+    delete process.env.TWILIO_ACCOUNT_SID;
+    delete process.env.TWILIO_AUTH_TOKEN;
+    delete process.env.TWILIO_VERIFY_SERVICE_SID;
+    delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_WEBHOOK_SECRET;
-    expect(() => getEnv()).toThrow(/Stripe secret key and webhook/);
+    expect(getEnv().NODE_ENV).toBe("production");
   });
 
   it("refuses a public Stripe secret", () => {
