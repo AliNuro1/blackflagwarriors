@@ -1,12 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { seedCharges, seedPlayers } from "./seed";
-import type { Charge, ClubStore, Payment, PaymentStatus, Player, PlayerBalance } from "./types";
+import type {
+  AuditEvent,
+  Charge,
+  ChargeCategory,
+  ClubStore,
+  MembershipStatus,
+  Payment,
+  PaymentStatus,
+  Player,
+  PlayerBalance,
+  UserRole,
+} from "./types";
 
 interface Memory {
   players: Player[];
   charges: Charge[];
   payments: Payment[];
   stripeEvents: Set<string>;
+  auditEvents: AuditEvent[];
 }
 
 function todayIsoDate(): string {
@@ -133,6 +145,7 @@ function createMemory(): Memory {
     charges: charges.map((charge) => refreshCharge(charge, payments)),
     payments,
     stripeEvents: new Set(),
+    auditEvents: [],
   };
 }
 
@@ -205,10 +218,12 @@ export class MockClubStore implements ClubStore {
           charge.playerId === player.id &&
           (charge.status === "open" || charge.status === "partial"),
       );
+      const overdue = open.filter((charge) => charge.dueOn < today);
       return {
         player,
         openPence: open.reduce((sum, charge) => sum + charge.remainingPence, 0),
-        overdueCount: open.filter((charge) => charge.dueOn < today).length,
+        overduePence: overdue.reduce((sum, charge) => sum + charge.remainingPence, 0),
+        overdueCount: overdue.length,
       };
     });
   }
@@ -357,4 +372,147 @@ export class MockClubStore implements ClubStore {
     }
     return true;
   }
+
+  async listAllCharges(): Promise<Charge[]> {
+    return [...memory().charges].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+  }
+
+  async listAllPayments(): Promise<Payment[]> {
+    return [...memory().payments]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(mapPayment);
+  }
+
+  async listAuditEvents(): Promise<AuditEvent[]> {
+    return [...memory().auditEvents].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async createPlayer(input: {
+    actorId: string;
+    fullName: string;
+    phoneE164: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player> {
+    assertAdminActor(input.actorId);
+    if (memory().players.some((player) => player.phoneE164 === input.phoneE164)) {
+      throw new Error("That mobile number is already registered");
+    }
+    const now = new Date().toISOString();
+    const player: Player = {
+      id: randomUUID(),
+      fullName: input.fullName.trim(),
+      phoneE164: input.phoneE164,
+      role: input.role ?? "player",
+      status: input.status ?? "active",
+      createdAt: now,
+      updatedAt: now,
+    };
+    memory().players.push(player);
+    return player;
+  }
+
+  async updatePlayer(input: {
+    actorId: string;
+    playerId: string;
+    fullName?: string;
+    phoneE164?: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player> {
+    assertAdminActor(input.actorId);
+    const player = memory().players.find((row) => row.id === input.playerId);
+    if (!player) throw new Error("Player not found");
+    const nextRole = input.role ?? player.role;
+    const nextStatus = input.status ?? player.status;
+    if (player.role === "admin" && player.status === "active") {
+      if (nextRole !== "admin" || nextStatus !== "active") {
+        const others = memory().players.filter(
+          (row) => row.id !== player.id && row.role === "admin" && row.status === "active",
+        );
+        if (others.length === 0) {
+          throw new Error("Cannot remove the last active administrator");
+        }
+      }
+    }
+    if (input.phoneE164 && input.phoneE164 !== player.phoneE164) {
+      if (memory().players.some((row) => row.phoneE164 === input.phoneE164)) {
+        throw new Error("That mobile number is already registered");
+      }
+    }
+    player.fullName = input.fullName?.trim() ?? player.fullName;
+    player.phoneE164 = input.phoneE164 ?? player.phoneE164;
+    player.role = nextRole;
+    player.status = nextStatus;
+    player.updatedAt = new Date().toISOString();
+    return { ...player };
+  }
+
+  async updateCharge(input: {
+    actorId: string;
+    chargeId: string;
+    description?: string;
+    category?: ChargeCategory;
+    dueOn?: string;
+    amountPence?: number;
+  }): Promise<Charge> {
+    assertAdminActor(input.actorId);
+    const charge = memory().charges.find((row) => row.id === input.chargeId);
+    if (!charge) throw new Error("Charge not found");
+    if (charge.status === "void") throw new Error("Cannot edit a void charge");
+    const reserved = allocatedToCharge(charge.id, memory().payments, ["pending", "succeeded"]);
+    if (input.amountPence != null && input.amountPence !== charge.amountPence && reserved > 0) {
+      throw new Error("Cannot change amount after payments have been allocated");
+    }
+    if (input.amountPence != null && input.amountPence < reserved) {
+      throw new Error("Amount cannot be below confirmed allocations");
+    }
+    if (input.description) charge.description = input.description.trim();
+    if (input.category) charge.category = input.category;
+    if (input.dueOn) charge.dueOn = input.dueOn;
+    if (input.amountPence != null) charge.amountPence = input.amountPence;
+    const refreshed = refreshCharge(charge, memory().payments);
+    Object.assign(charge, refreshed);
+    return { ...charge };
+  }
+
+  async voidCharge(input: { actorId: string; chargeId: string }): Promise<Charge> {
+    assertAdminActor(input.actorId);
+    const charge = memory().charges.find((row) => row.id === input.chargeId);
+    if (!charge) throw new Error("Charge not found");
+    charge.status = "void";
+    charge.remainingPence = 0;
+    charge.payablePence = 0;
+    return { ...charge };
+  }
+
+  async recordAudit(input: {
+    actorId: string;
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    summary: string;
+  }): Promise<AuditEvent> {
+    const actor = assertAdminActor(input.actorId);
+    const event: AuditEvent = {
+      id: randomUUID(),
+      actorId: actor.id,
+      actorName: actor.fullName,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId ?? null,
+      summary: input.summary,
+      createdAt: new Date().toISOString(),
+    };
+    memory().auditEvents.push(event);
+    return event;
+  }
+}
+
+function assertAdminActor(actorId: string): Player {
+  const actor = memory().players.find((player) => player.id === actorId);
+  if (!actor || actor.role !== "admin" || actor.status !== "active") {
+    throw new Error("Admin access only");
+  }
+  return actor;
 }

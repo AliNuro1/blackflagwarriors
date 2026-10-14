@@ -73,6 +73,8 @@ Local Postgres without Supabase: apply `supabase/tests/bootstrap.sql` first (cre
 
 Roles are stored on `profiles.role`. Players cannot update that column: there is no UPDATE policy for non-admins. Fee amounts and payment status are not writable by players.
 
+The administrator dashboard is at `/admin` (players, charges, payments, CSV export, audit log). See [`docs/admin.md`](docs/admin.md) for first-admin provisioning. Ordinary players are rejected on every admin page and `/api/admin` route.
+
 RLS is **enabled and forced** on every application table. Players may `SELECT` only their own profile, charges, payments, and allocations. `anon` has no table grants. Webhook events have no client policies. Charges are inserted through `create_charges_for_players`; checkouts and settlement go through `begin_checkout`, `complete_payment`, and `ingest_stripe_event` so multiple rows change in one transaction.
 
 ## Tests
@@ -81,7 +83,7 @@ RLS is **enabled and forced** on every application table. Players may `SELECT` o
 bun run test:run
 ```
 
-That includes phone helpers, the in-memory store, and Postgres RLS checks (PGlite). Policy tests live in `src/test/rls-policies.test.ts`.
+That includes phone helpers, the in-memory store, administrator access checks, and Postgres RLS checks (PGlite). Policy tests live in `src/test/rls-policies.test.ts`.
 
 ## Stripe Checkout
 

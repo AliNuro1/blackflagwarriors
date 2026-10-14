@@ -22,6 +22,7 @@ async function openClubDb() {
   await db.exec(sqlFile("supabase/migrations/20261014193000_profile_status.sql"));
   await db.exec(sqlFile("supabase/migrations/20261014200000_stripe_checkout_reconcile.sql"));
   await db.exec(sqlFile("supabase/migrations/20261014201000_stripe_checkout_functions.sql"));
+  await db.exec(sqlFile("supabase/migrations/20261014210000_admin_dashboard.sql"));
   await db.exec(sqlFile("supabase/seed.sql"));
   return db;
 }
@@ -311,5 +312,41 @@ describe("club payment access policies", () => {
       );
       expect(freed.rows[0]?.allocated_pence).toBe(0);
     });
+  });
+
+  it("hides the audit log from ordinary players", async () => {
+    await asRole(db, "service_role", null, async () => {
+      await db.query(
+        `select public.record_admin_audit(
+           $1::uuid, 'create_player', 'player', $2::uuid, 'test', '{}'::jsonb
+         )`,
+        [ADMIN, PLAYER],
+      );
+    });
+    await asRole(db, "authenticated", PLAYER, async () => {
+      const { rows } = await db.query("select id from public.admin_audit_events");
+      expect(rows.length).toBe(0);
+    });
+  });
+
+  it("blocks a player from creating a profile", async () => {
+    await asRole(db, "authenticated", PLAYER, async () => {
+      await expect(
+        db.query(
+          `insert into public.profiles (full_name, phone_e164, role)
+           values ('Self Admin', '+447700900888', 'admin')`,
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  it("refuses to delete a payment row", async () => {
+    await expect(db.query("delete from public.payments")).rejects.toThrow(/cannot be deleted/i);
+  });
+
+  it("refuses to remove the last active administrator", async () => {
+    await expect(
+      db.query("update public.profiles set role = 'player' where id = $1", [ADMIN]),
+    ).rejects.toThrow(/last active administrator/i);
   });
 });

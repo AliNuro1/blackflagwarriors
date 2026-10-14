@@ -55,7 +55,19 @@ export interface Payment {
 export interface PlayerBalance {
   player: Player;
   openPence: number;
+  overduePence: number;
   overdueCount: number;
+}
+
+export interface AuditEvent {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  summary: string;
+  createdAt: string;
 }
 
 export interface ClubStore {
@@ -66,6 +78,40 @@ export interface ClubStore {
   listOpenChargesByIds(playerId: string, chargeIds: string[]): Promise<Charge[]>;
   listPaymentsForPlayer(playerId: string): Promise<Payment[]>;
   squadBalances(): Promise<PlayerBalance[]>;
+  listAllCharges(): Promise<Charge[]>;
+  listAllPayments(): Promise<Payment[]>;
+  listAuditEvents(): Promise<AuditEvent[]>;
+  createPlayer(input: {
+    actorId: string;
+    fullName: string;
+    phoneE164: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player>;
+  updatePlayer(input: {
+    actorId: string;
+    playerId: string;
+    fullName?: string;
+    phoneE164?: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player>;
+  updateCharge(input: {
+    actorId: string;
+    chargeId: string;
+    description?: string;
+    category?: ChargeCategory;
+    dueOn?: string;
+    amountPence?: number;
+  }): Promise<Charge>;
+  voidCharge(input: { actorId: string; chargeId: string }): Promise<Charge>;
+  recordAudit(input: {
+    actorId: string;
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    summary: string;
+  }): Promise<AuditEvent>;
   createCharges(input: {
     playerIds: string[];
     category: ChargeCategory;

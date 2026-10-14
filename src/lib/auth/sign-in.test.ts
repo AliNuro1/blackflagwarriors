@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { DEMO_INACTIVE_PHONE, DEMO_PLAYER_PHONE } from "@/lib/data/seed";
 import { MockClubStore, resetMockStore } from "@/lib/data/mock-store";
-import { resetRateLimits, START_PER_IP, START_PER_PHONE, VERIFY_PER_PHONE } from "@/lib/auth/limits";
+import { resetRateLimits, START_PER_PHONE, VERIFY_PER_PHONE } from "@/lib/auth/limits";
 import { confirmSignIn, startSignIn } from "@/lib/auth/sign-in";
 import type { TwilioVerifyClient } from "@/lib/auth/twilio-verify";
 

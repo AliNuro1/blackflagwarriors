@@ -46,4 +46,5 @@ next-env.d.ts
 !/docs/CODEBASE_MAP.md
 !/docs/twilio-verify.md
 !/docs/stripe.md
+!/docs/admin.md
 /for-agent

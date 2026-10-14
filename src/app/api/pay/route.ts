@@ -1,3 +1,4 @@
+import { CsrfError, assertSameOrigin } from "@/lib/csrf";
 import { getStore } from "@/lib/data";
 import { stripeConfigured } from "@/lib/env";
 import { jsonError, jsonOk } from "@/lib/http";
@@ -8,6 +9,13 @@ import { getSession } from "@/lib/session";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  try {
+    assertSameOrigin(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return jsonError(error.message, 403);
+    throw error;
+  }
+
   const session = await getSession();
   if (!session) return jsonError("Sign in to pay.", 401);
 

@@ -9,16 +9,18 @@ export default async function AccountPage() {
   const session = await getSession();
   if (!session) redirect("/");
 
+  let data;
   try {
-    const data = await loadPlayerDashboard({
+    data = await loadPlayerDashboard({
       session,
       store: getStore(),
       developmentSeed: usesMockData(),
       stripeReady: stripeConfigured(),
     });
-    return <PlayerDashboard data={data} />;
   } catch (error) {
     if (error instanceof DashboardAccessError) redirect("/");
     throw error;
   }
+
+  return <PlayerDashboard data={data} />;
 }

@@ -1,10 +1,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getEnv } from "@/lib/env";
 import type {
+  AuditEvent,
   Charge,
   ChargeCategory,
   ChargeStatus,
   ClubStore,
+  MembershipStatus,
   Payment,
   PaymentStatus,
   Player,
@@ -261,6 +263,9 @@ export class SupabaseClubStore implements ClubStore {
           (sum, row) => sum + (remaining.get(row.id)?.remaining ?? row.amount_pence),
           0,
         ),
+        overduePence: theirs
+          .filter((row) => row.due_on < today)
+          .reduce((sum, row) => sum + (remaining.get(row.id)?.remaining ?? row.amount_pence), 0),
         overdueCount: theirs.filter((row) => row.due_on < today).length,
       };
     });
@@ -383,6 +388,178 @@ export class SupabaseClubStore implements ClubStore {
     });
     if (error) throw new Error(error.message);
     return Boolean(data);
+  }
+
+  async listAllCharges(): Promise<Charge[]> {
+    const { data, error } = await this.client.from("charges").select("*").order("due_on");
+    const rows = requireRows(data as ChargeRow[] | null, error);
+    const remaining = await this.remainingByCharge(rows.map((row) => row.id));
+    return rows.map((row) => {
+      const balances = remaining.get(row.id);
+      return mapCharge(
+        row,
+        balances?.remaining ?? row.amount_pence,
+        balances?.payable ?? row.amount_pence,
+      );
+    });
+  }
+
+  async listAllPayments(): Promise<Payment[]> {
+    const { data, error } = await this.client
+      .from("payments")
+      .select("*")
+      .order("created_at", { ascending: false });
+    const rows = requireRows(data as PaymentRow[] | null, error);
+    if (rows.length === 0) return [];
+    const byPlayer = new Map<string, Payment[]>();
+    for (const row of rows) {
+      if (!byPlayer.has(row.player_id)) {
+        byPlayer.set(row.player_id, await this.listPaymentsForPlayer(row.player_id));
+      }
+    }
+    const listed = [...byPlayer.values()].flat();
+    return rows
+      .map((row) => listed.find((payment) => payment.id === row.id))
+      .filter((payment): payment is Payment => Boolean(payment));
+  }
+
+  async listAuditEvents(): Promise<AuditEvent[]> {
+    const { data, error } = await this.client
+      .from("admin_audit_events")
+      .select("id, actor_id, action, entity_type, entity_id, summary, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = requireRows(
+      data as {
+        id: string;
+        actor_id: string;
+        action: string;
+        entity_type: string;
+        entity_id: string | null;
+        summary: string;
+        created_at: string;
+      }[] | null,
+      error,
+    );
+    const actors = await this.listPlayers();
+    const names = new Map(actors.map((player) => [player.id, player.fullName]));
+    return rows.map((row) => ({
+      id: row.id,
+      actorId: row.actor_id,
+      actorName: names.get(row.actor_id) ?? "Administrator",
+      action: row.action,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      summary: row.summary,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async createPlayer(input: {
+    actorId: string;
+    fullName: string;
+    phoneE164: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player> {
+    const { data, error } = await this.client.rpc("create_player", {
+      p_actor_id: input.actorId,
+      p_full_name: input.fullName,
+      p_phone_e164: input.phoneE164,
+      p_role: input.role ?? "player",
+      p_status: input.status ?? "active",
+    });
+    return mapPlayer(requireRow(data as ProfileRow | null, error));
+  }
+
+  async updatePlayer(input: {
+    actorId: string;
+    playerId: string;
+    fullName?: string;
+    phoneE164?: string;
+    role?: UserRole;
+    status?: MembershipStatus;
+  }): Promise<Player> {
+    const { data, error } = await this.client.rpc("update_player", {
+      p_actor_id: input.actorId,
+      p_player_id: input.playerId,
+      p_full_name: input.fullName ?? null,
+      p_phone_e164: input.phoneE164 ?? null,
+      p_role: input.role ?? null,
+      p_status: input.status ?? null,
+    });
+    return mapPlayer(requireRow(data as ProfileRow | null, error));
+  }
+
+  async updateCharge(input: {
+    actorId: string;
+    chargeId: string;
+    description?: string;
+    category?: ChargeCategory;
+    dueOn?: string;
+    amountPence?: number;
+  }): Promise<Charge> {
+    const { data, error } = await this.client.rpc("update_charge", {
+      p_actor_id: input.actorId,
+      p_charge_id: input.chargeId,
+      p_description: input.description ?? null,
+      p_category: input.category ?? null,
+      p_due_on: input.dueOn ?? null,
+      p_amount_pence: input.amountPence ?? null,
+    });
+    const row = requireRow(data as ChargeRow | null, error);
+    const remaining = await this.remainingByCharge([row.id]);
+    const balances = remaining.get(row.id);
+    return mapCharge(row, balances?.remaining ?? row.amount_pence, balances?.payable ?? row.amount_pence);
+  }
+
+  async voidCharge(input: { actorId: string; chargeId: string }): Promise<Charge> {
+    const { data, error } = await this.client.rpc("void_charge", {
+      p_actor_id: input.actorId,
+      p_charge_id: input.chargeId,
+    });
+    const row = requireRow(data as ChargeRow | null, error);
+    return mapCharge(row, 0, 0);
+  }
+
+  async recordAudit(input: {
+    actorId: string;
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    summary: string;
+  }): Promise<AuditEvent> {
+    const { data, error } = await this.client.rpc("record_admin_audit", {
+      p_actor_id: input.actorId,
+      p_action: input.action,
+      p_entity_type: input.entityType,
+      p_entity_id: input.entityId ?? null,
+      p_summary: input.summary,
+      p_payload: {},
+    });
+    const row = requireRow(
+      data as {
+        id: string;
+        actor_id: string;
+        action: string;
+        entity_type: string;
+        entity_id: string | null;
+        summary: string;
+        created_at: string;
+      } | null,
+      error,
+    );
+    const actor = await this.getPlayerById(row.actor_id);
+    return {
+      id: row.id,
+      actorId: row.actor_id,
+      actorName: actor?.fullName ?? "Administrator",
+      action: row.action,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      summary: row.summary,
+      createdAt: row.created_at,
+    };
   }
 }
 

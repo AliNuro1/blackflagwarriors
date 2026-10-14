@@ -58,12 +58,15 @@ export function getEnv(): Env {
     throw new Error("Invalid environment variables");
   }
 
+  const productionRuntime =
+    parsed.data.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build";
+
   if (parsed.data.NODE_ENV === "production" && parsed.data.AUTH_DEV_MOCK === "true") {
     throw new Error("AUTH_DEV_MOCK cannot be enabled in production.");
   }
 
   if (
-    parsed.data.NODE_ENV === "production" &&
+    productionRuntime &&
     (!parsed.data.TWILIO_ACCOUNT_SID ||
       !parsed.data.TWILIO_AUTH_TOKEN ||
       !parsed.data.TWILIO_VERIFY_SERVICE_SID)
@@ -71,8 +74,16 @@ export function getEnv(): Env {
     throw new Error("Twilio Verify is required in production.");
   }
 
-  if (parsed.data.NODE_ENV === "production" && (parsed.data.SESSION_SECRET?.length ?? 0) < 32) {
+  if (productionRuntime && (parsed.data.SESSION_SECRET?.length ?? 0) < 32) {
     throw new Error("SESSION_SECRET must be at least 32 characters in production.");
+  }
+
+  if (productionRuntime && (!parsed.data.SUPABASE_URL || !parsed.data.SUPABASE_SERVICE_ROLE_KEY)) {
+    throw new Error("Supabase is required in production. The in-memory store must not be used.");
+  }
+
+  if (productionRuntime && (!parsed.data.STRIPE_SECRET_KEY || !parsed.data.STRIPE_WEBHOOK_SECRET)) {
+    throw new Error("Stripe secret key and webhook signing secret are required in production.");
   }
 
   return parsed.data;

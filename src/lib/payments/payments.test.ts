@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import Stripe from "stripe";
 import { MockClubStore, resetMockStore } from "@/lib/data/mock-store";
-import { DEMO_PLAYER_PHONE } from "@/lib/data/seed";
+import { DEMO_INACTIVE_PHONE, DEMO_PLAYER_PHONE } from "@/lib/data/seed";
 import type { SessionPayload } from "@/lib/auth/session";
 import {
   checkoutIdempotencyKey,
@@ -377,5 +377,29 @@ describe("Stripe Checkout", () => {
         stripe: new MemoryStripe(),
       }),
     ).rejects.toBeInstanceOf(PaymentAccessError);
+  });
+
+  it("refuses checkout for an inactive player", async () => {
+    const store = new MockClubStore();
+    const robin = await store.getPlayerByPhone(DEMO_INACTIVE_PHONE);
+    await expect(
+      startPlayerCheckout({
+        session: sessionFor(robin!.id, robin!.fullName),
+        store,
+        stripe: new MemoryStripe(),
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("rejects a webhook with a missing signature", async () => {
+    await expect(
+      processSignedStripeWebhook({
+        rawBody: "{}",
+        signature: null,
+        webhookSecret: WEBHOOK_SECRET,
+        stripe: new MemoryStripe(),
+        store: new MockClubStore(),
+      }),
+    ).rejects.toBeInstanceOf(WebhookSignatureError);
   });
 });

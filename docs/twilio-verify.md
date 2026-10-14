@@ -22,7 +22,7 @@ If Twilio is unset in `development`, mock mode turns on automatically and the UI
 2. Open **Verify** → **Services** → **Create new**.
 3. Name it e.g. `black-flag-warriors-login`. Enable the **SMS** channel. Leave friendly-name optional.
 4. Copy the Service SID (`VA…`) into `TWILIO_VERIFY_SERVICE_SID`.
-5. For UK numbers, use a messaging-compliant Twilio number / geo permissions so SMS to `+44` mobiles is allowed.
+5. Geographic permissions: in Twilio Console → **Messaging** → **Geo permissions** (or Verify geo settings), allow **United Kingdom**. The app only accepts UK mobiles (`+44` / `07…`). Confirm a real `+44` Verify SMS in the Twilio logs before production.
 6. Optional: set Verify **max check attempts** in the Twilio console as a second limit on top of this app’s rate limits.
 7. Put the three Twilio values and `SESSION_SECRET` in `.env.local` on the server (or your host’s secret store). Restart the app.
 

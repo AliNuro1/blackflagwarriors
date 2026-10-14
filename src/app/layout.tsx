@@ -13,8 +13,12 @@ const display = Oswald({
   variable: "--font-display",
 });
 
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   themeColor: "#111111",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export const metadata: Metadata = {
