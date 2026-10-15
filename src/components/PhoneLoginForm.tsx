@@ -30,9 +30,9 @@ export function PhoneLoginForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
-        setError(body.error ?? "Could not send a code.");
+        setError(body?.error ?? "Could not send a code. Check sign-in env vars on the server.");
         return;
       }
       router.push("/verify");
